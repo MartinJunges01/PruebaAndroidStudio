@@ -18,14 +18,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.prueba.ui.theme.PruebaTheme
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.example.prueba.data.AppDatabase
+import com.example.prueba.repository.TaskRepository
+import com.example.prueba.viewmodel.TaskViewModel
+
+import androidx.lifecycle.ViewModelProvider
+import androidx.room.Room
+import com.example.prueba.viewmodel.TaskViewModelFactory
+
 class MainActivity : ComponentActivity() {
+    private lateinit var viewModel: TaskViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Inicialización manual
+        val database = Room.databaseBuilder(applicationContext, AppDatabase::class.java, "task-db").build()
+        val repository = TaskRepository(database.taskDao())
+        val factory = TaskViewModelFactory(repository)
+        viewModel = ViewModelProvider(this, factory)[TaskViewModel::class.java]
+
         enableEdgeToEdge()
         setContent {
             PruebaTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
+                        viewModel = viewModel,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -35,19 +55,17 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
+fun MainScreen(viewModel: TaskViewModel, modifier: Modifier = Modifier) {
+    val tasks by viewModel.tasks.collectAsState()
     
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "¡Hola, bienvenido!")
-        Button(onClick = { 
-            Toast.makeText(context, "¡Has presionado el botón!", Toast.LENGTH_SHORT).show() 
-        }) {
-            Text("Presióname")
+        Text(text = "Tareas: ${tasks.size}")
+        Button(onClick = { viewModel.addTask("Nueva tarea") }) {
+            Text("Añadir tarea")
         }
     }
 }
